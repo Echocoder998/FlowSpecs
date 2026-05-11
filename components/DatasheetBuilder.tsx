@@ -1079,13 +1079,13 @@ export function DatasheetBuilder() {
               <aside className="review-panel">
                 <h3>Review</h3>
                 {questionnaire.constraints.map((constraint) => (
-                  <div className="review-row" key={constraint}>
+                  <div className="review-row warning" key={constraint}>
                     <AlertTriangle size={16} />
                     <span>{constraint}</span>
                   </div>
                 ))}
                 {questionnaire.reviewNotes.map((note) => (
-                  <div className="review-row" key={note}>
+                  <div className="review-row success" key={note}>
                     <CheckCircle2 size={16} />
                     <span>{note}</span>
                   </div>
@@ -1463,7 +1463,9 @@ function PartSourcer() {
                   <div className="source-card" key={`${alternate.mceGroup}-${alternate.lineCard}`}>
                     <div className="source-card-head">
                       <strong>{alternate.lineCard}</strong>
-                      <span>{Math.round(alternate.fitScore * 100)}%</span>
+                      <span className={scoreLabel(alternate.fitScore).className}>
+                        {Math.round(alternate.fitScore * 100)}%
+                      </span>
                     </div>
                     <small>{alternate.mceGroup} / {alternate.businessUnit}</small>
                     <p>{alternate.rationale}</p>
@@ -1475,13 +1477,13 @@ function PartSourcer() {
             <div className="review-panel sourcer-review">
               <h3>Follow up</h3>
               {result.nextQuestions.map((question) => (
-                <div className="review-row" key={question}>
+                <div className="review-row warning" key={question}>
                   <MessageSquare size={16} />
                   <span>{question}</span>
                 </div>
               ))}
               {result.lineCardReferences.map((reference) => (
-                <div className="review-row" key={reference}>
+                <div className="review-row success" key={reference}>
                   <CheckCircle2 size={16} />
                   <span>{reference}</span>
                 </div>
