@@ -1,0 +1,4 @@
+@echo off
+setlocal
+cd /d "%~dp0"
+node node_modules\next\dist\bin\next dev

@@ -1,0 +1,197 @@
+.admin-shell {
+  width: min(1100px, 100%);
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.admin-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.admin-header h1 {
+  font-size: 18px;
+  margin: 0;
+}
+
+.admin-logout {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+
+.admin-logout:hover {
+  color: var(--ink);
+  border-color: var(--muted-2);
+}
+
+.admin-panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: var(--shadow);
+}
+
+.admin-panel h2 {
+  margin: 0 0 12px;
+  font-size: 15px;
+}
+
+.admin-dropzone {
+  border: 2px dashed var(--line);
+  border-radius: 10px;
+  padding: 28px;
+  text-align: center;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.admin-dropzone:hover {
+  border-color: var(--primary);
+  color: var(--ink);
+}
+
+.admin-error {
+  color: var(--error);
+  background: var(--error-soft);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-top: 12px;
+  font-size: 13px;
+}
+
+.admin-status {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 12px;
+}
+
+.admin-table-wrap {
+  overflow-x: auto;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.admin-table th {
+  text-align: left;
+  color: var(--muted);
+  font-weight: 600;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+.admin-table td {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+
+.admin-table input {
+  width: 100%;
+  min-width: 110px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 4px 6px;
+  background: var(--panel-2);
+}
+
+.admin-table input:focus {
+  outline: none;
+  border-color: var(--primary);
+  background: var(--panel);
+}
+
+.admin-row-remove,
+.admin-row-delete {
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--error);
+  padding: 4px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.admin-row-remove:hover,
+.admin-row-delete:hover {
+  background: var(--error-soft);
+}
+
+.admin-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.admin-primary-button {
+  background: var(--primary);
+  color: #fff;
+  border-radius: 8px;
+  padding: 10px 16px;
+  cursor: pointer;
+}
+
+.admin-primary-button:hover {
+  background: var(--primary-hover);
+}
+
+.admin-primary-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.admin-filter {
+  width: 100%;
+  max-width: 320px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 12px;
+}
+
+.admin-login-shell {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.admin-login-card {
+  width: min(360px, 90vw);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 28px;
+  box-shadow: var(--shadow);
+}
+
+.admin-login-card h1 {
+  font-size: 18px;
+  margin: 0 0 16px;
+}
+
+.admin-login-card input {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+
+.admin-empty {
+  color: var(--muted);
+  font-size: 13px;
+}
