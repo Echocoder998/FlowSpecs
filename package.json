@@ -9,8 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@supabase/ssr": "^0.10.3",
-    "@supabase/supabase-js": "^2.105.4",
+    "@neondatabase/serverless": "^1.0.0",
     "fflate": "^0.8.2",
     "jspdf": "^4.2.1",
     "lucide-react": "^0.468.0",

@@ -25,8 +25,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { makeDefaultAnswers, renderPartNumber } from "@/lib/part-number";
 import { extractPdfText, extractSourceFileText } from "@/lib/file-extraction";
 import {
-  getSupabaseClient,
-  isSupabaseConfigured,
+  deleteDatasheet,
+  listDatasheets,
+  saveDatasheet,
   type DatasheetSaveInput,
   type SavedDatasheet
 } from "@/lib/supabase";
@@ -217,12 +218,9 @@ export function DatasheetBuilder() {
     return renderPartNumber(questionnaire.partNumberModel, questionnaire.fields, answers);
   }, [answers, questionnaire]);
   const confidence = useMemo(() => questionnaireConfidence(questionnaire), [questionnaire]);
-  const supabaseConfigured = isSupabaseConfigured();
-
   useEffect(() => {
-    if (!supabaseConfigured) return;
     void loadSavedDatasheets();
-  }, [supabaseConfigured]);
+  }, []);
 
   useEffect(() => {
     if (!chatBusy) return;
@@ -247,25 +245,15 @@ export function DatasheetBuilder() {
   }, [chatBusy]);
 
   async function loadSavedDatasheets() {
-    const supabase = getSupabaseClient();
-    if (!supabase) {
-      setStorageMessage("Add Supabase URL and anon key to enable saved datasheets.");
-      return;
-    }
-
     setStorageBusy(true);
-    const { data, error: loadError } = await supabase
-      .from("datasheets")
-      .select("*")
-      .order("updated_at", { ascending: false });
-    setStorageBusy(false);
-
-    if (loadError) {
-      setStorageMessage(loadError.message);
-      return;
+    try {
+      setSavedDatasheets(await listDatasheets());
+      setStorageMessage("");
+    } catch (loadError) {
+      setStorageMessage(loadError instanceof Error ? loadError.message : "Could not load saved datasheets.");
+    } finally {
+      setStorageBusy(false);
     }
-
-    setSavedDatasheets((data || []) as SavedDatasheet[]);
   }
 
   async function handleFile(file: File | undefined) {
@@ -353,13 +341,6 @@ export function DatasheetBuilder() {
 
   async function saveCurrentDatasheet() {
     if (!questionnaire) return;
-    const supabase = getSupabaseClient();
-
-    if (!supabase) {
-      setStorageMessage("Add Supabase URL and anon key to .env.local, then restart the dev server.");
-      return;
-    }
-
     const title = questionnaire.title || fileName.replace(/\.pdf$/i, "") || "Untitled datasheet";
     const payload: DatasheetSaveInput = {
       title,
@@ -372,15 +353,14 @@ export function DatasheetBuilder() {
     };
 
     setStorageBusy(true);
-    const request = activeSavedId
-      ? supabase.from("datasheets").update(payload).eq("id", activeSavedId).select("*").single()
-      : supabase.from("datasheets").insert(payload).select("*").single();
-    const { data, error: saveError } = await request;
-    setStorageBusy(false);
-
-    if (saveError) {
-      setStorageMessage(saveError.message);
+    let data: SavedDatasheet;
+    try {
+      data = await saveDatasheet(payload, activeSavedId);
+    } catch (saveError) {
+      setStorageMessage(saveError instanceof Error ? saveError.message : "Could not save datasheet.");
       return;
+    } finally {
+      setStorageBusy(false);
     }
 
     setActiveSavedId(data.id);
@@ -407,16 +387,14 @@ export function DatasheetBuilder() {
   }
 
   async function deleteSavedDatasheet(id: string) {
-    const supabase = getSupabaseClient();
-    if (!supabase) return;
-
     setStorageBusy(true);
-    const { error: deleteError } = await supabase.from("datasheets").delete().eq("id", id);
-    setStorageBusy(false);
-
-    if (deleteError) {
-      setStorageMessage(deleteError.message);
+    try {
+      await deleteDatasheet(id);
+    } catch (deleteError) {
+      setStorageMessage(deleteError instanceof Error ? deleteError.message : "Could not delete datasheet.");
       return;
+    } finally {
+      setStorageBusy(false);
     }
 
     if (activeSavedId === id) setActiveSavedId(null);
@@ -961,26 +939,19 @@ export function DatasheetBuilder() {
 
           <div className="saved-head">
             <div>
-              <p className="eyebrow">Supabase</p>
+              <p className="eyebrow">Database</p>
               <h3>Saved datasheets</h3>
             </div>
             <button
               className="icon-button"
               type="button"
               onClick={loadSavedDatasheets}
-              disabled={!supabaseConfigured || storageBusy}
+              disabled={storageBusy}
               title="Refresh saved datasheets"
             >
               {storageBusy ? <Loader2 className="spin" size={18} /> : <Database size={18} />}
             </button>
           </div>
-
-          {!supabaseConfigured ? (
-            <div className="notice">
-              <AlertTriangle size={18} />
-              <span>Add Supabase keys to enable cloud saves.</span>
-            </div>
-          ) : null}
 
           {storageMessage ? <div className="storage-message">{storageMessage}</div> : null}
 

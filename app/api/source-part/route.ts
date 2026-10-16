@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { formatMceLineCardLibrary, mceLineCardLibrarySource } from "@/lib/mce-line-card";
 import { createStructuredResponse, sanitizeText } from "@/lib/openai";
 import { partSourcingSchema } from "@/lib/schemas";
-import { getSupabaseAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase-admin";
+import { ensureSchema, getDb, isDatabaseConfigured, normalizeRow } from "@/lib/db";
 import { formatVendorDirectory, mapRowToVendorDirectoryEntry, shortlistVendorDirectory } from "@/lib/vendor-directory";
 import type { PartSourcingInput, PartSourcingResult } from "@/lib/types";
 
@@ -35,12 +35,17 @@ export async function POST(request: NextRequest) {
     const fileText = sanitizeText(input.fileText, MAX_FILE_TEXT_CHARS);
 
     let directoryText = "No vendor/branch/contact directory data has been uploaded yet.";
-    if (isSupabaseAdminConfigured()) {
-      const client = getSupabaseAdminClient()!;
-      const { data } = await client.from("vendor_directory").select("*");
-      const entries = (data || []).map(mapRowToVendorDirectoryEntry);
-      const query = [input.partNumber, input.description, input.fileName].join(" ");
-      directoryText = formatVendorDirectory(shortlistVendorDirectory(entries, query));
+    if (isDatabaseConfigured()) {
+      try {
+        await ensureSchema();
+        const sql = getDb()!;
+        const rows = await sql`select * from vendor_directory`;
+        const entries = rows.map((row) => mapRowToVendorDirectoryEntry(normalizeRow(row)));
+        const query = [input.partNumber, input.description, input.fileName].join(" ");
+        directoryText = formatVendorDirectory(shortlistVendorDirectory(entries, query));
+      } catch {
+        // Directory lookup is optional; continue with the line-card library only.
+      }
     }
 
     const result = await createStructuredResponse<PartSourcingResult>({

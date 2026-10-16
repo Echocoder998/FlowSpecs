@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase-admin";
+import { ensureSchema, getDb, isDatabaseConfigured, normalizeRow } from "@/lib/db";
 import { mapRowToVendorDirectoryEntry } from "@/lib/vendor-directory";
 import type { VendorDirectoryDraftEntry } from "@/lib/types";
 
 export const runtime = "nodejs";
+
+function errorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Database request failed.";
+}
 
 function normalizeDraftEntry(input: unknown): VendorDirectoryDraftEntry {
   const body = (input || {}) as Partial<VendorDirectoryDraftEntry>;
@@ -26,26 +30,25 @@ function normalizeDraftEntry(input: unknown): VendorDirectoryDraftEntry {
 }
 
 export async function GET() {
-  if (!isSupabaseAdminConfigured()) {
-    return NextResponse.json({ error: "Supabase is not configured." }, { status: 500 });
+  if (!isDatabaseConfigured()) {
+    return NextResponse.json({ error: "Database is not configured. Set DATABASE_URL." }, { status: 500 });
   }
 
-  const client = getSupabaseAdminClient()!;
-  const { data, error } = await client
-    .from("vendor_directory")
-    .select("*")
-    .order("vendor_name", { ascending: true });
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  try {
+    await ensureSchema();
+    const sql = getDb()!;
+    const rows = await sql`select * from vendor_directory order by vendor_name asc`;
+    return NextResponse.json({
+      entries: rows.map((row) => mapRowToVendorDirectoryEntry(normalizeRow(row)))
+    });
+  } catch (error) {
+    return NextResponse.json({ error: errorMessage(error) }, { status: 500 });
   }
-
-  return NextResponse.json({ entries: (data || []).map(mapRowToVendorDirectoryEntry) });
 }
 
 export async function POST(request: NextRequest) {
-  if (!isSupabaseAdminConfigured()) {
-    return NextResponse.json({ error: "Supabase is not configured." }, { status: 500 });
+  if (!isDatabaseConfigured()) {
+    return NextResponse.json({ error: "Database is not configured. Set DATABASE_URL." }, { status: 500 });
   }
 
   const body = (await request.json().catch(() => ({}))) as {
@@ -64,44 +67,54 @@ export async function POST(request: NextRequest) {
   const fileName = typeof body.fileName === "string" ? body.fileName.trim() : "";
   const fileType = typeof body.fileType === "string" ? body.fileType.trim() : "";
 
-  const client = getSupabaseAdminClient()!;
-  const { data, error } = await client
-    .from("vendor_directory")
-    .insert(
-      entries.map((entry) => ({
-        vendor_name: entry.vendorName,
-        product_or_category: entry.productOrCategory,
-        mce_group: entry.mceGroup,
-        business_unit: entry.businessUnit,
-        line_card: entry.lineCard,
-        branch_name: entry.branchName,
-        contact_name: entry.contactName,
-        contact_email: entry.contactEmail,
-        contact_phone: entry.contactPhone,
-        contact_title: entry.contactTitle,
-        notes: entry.notes,
-        source_file: entry.sourceFile || fileName
-      }))
-    )
-    .select("*");
+  const records = entries.map((entry) => ({
+    vendor_name: entry.vendorName,
+    product_or_category: entry.productOrCategory,
+    mce_group: entry.mceGroup,
+    business_unit: entry.businessUnit,
+    line_card: entry.lineCard,
+    branch_name: entry.branchName,
+    contact_name: entry.contactName,
+    contact_email: entry.contactEmail,
+    contact_phone: entry.contactPhone,
+    contact_title: entry.contactTitle,
+    notes: entry.notes,
+    source_file: entry.sourceFile || fileName
+  }));
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  try {
+    await ensureSchema();
+    const sql = getDb()!;
+    const rows = await sql`
+      insert into vendor_directory (
+        vendor_name, product_or_category, mce_group, business_unit, line_card, branch_name,
+        contact_name, contact_email, contact_phone, contact_title, notes, source_file
+      )
+      select
+        vendor_name, product_or_category, mce_group, business_unit, line_card, branch_name,
+        contact_name, contact_email, contact_phone, contact_title, notes, source_file
+      from jsonb_to_recordset(${JSON.stringify(records)}::jsonb) as r(
+        vendor_name text, product_or_category text, mce_group text, business_unit text,
+        line_card text, branch_name text, contact_name text, contact_email text,
+        contact_phone text, contact_title text, notes text, source_file text
+      )
+      returning *`;
+
+    await sql`
+      insert into admin_uploads (file_name, file_type, row_count, status)
+      values (${fileName}, ${fileType}, ${entries.length}, 'committed')`;
+
+    return NextResponse.json({
+      entries: rows.map((row) => mapRowToVendorDirectoryEntry(normalizeRow(row)))
+    });
+  } catch (error) {
+    return NextResponse.json({ error: errorMessage(error) }, { status: 500 });
   }
-
-  await client.from("admin_uploads").insert({
-    file_name: fileName,
-    file_type: fileType,
-    row_count: entries.length,
-    status: "committed"
-  });
-
-  return NextResponse.json({ entries: (data || []).map(mapRowToVendorDirectoryEntry) });
 }
 
 export async function DELETE(request: NextRequest) {
-  if (!isSupabaseAdminConfigured()) {
-    return NextResponse.json({ error: "Supabase is not configured." }, { status: 500 });
+  if (!isDatabaseConfigured()) {
+    return NextResponse.json({ error: "Database is not configured. Set DATABASE_URL." }, { status: 500 });
   }
 
   const id = request.nextUrl.searchParams.get("id");
@@ -109,12 +122,12 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: "Missing id." }, { status: 400 });
   }
 
-  const client = getSupabaseAdminClient()!;
-  const { error } = await client.from("vendor_directory").delete().eq("id", id);
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  try {
+    await ensureSchema();
+    const sql = getDb()!;
+    await sql`delete from vendor_directory where id = ${id}`;
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    return NextResponse.json({ error: errorMessage(error) }, { status: 500 });
   }
-
-  return NextResponse.json({ ok: true });
 }
